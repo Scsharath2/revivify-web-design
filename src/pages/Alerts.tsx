@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { z } from "zod";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Mail, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+// Validation schemas
+const emailSchema = z.string().trim().email("Invalid email address").max(255, "Email must be less than 255 characters");
+const thresholdSchema = z.number().int("Threshold must be a whole number").min(0, "Threshold must be at least 0").max(100, "Threshold must be at most 100");
 
 const mockRecipients = [
   { id: 1, email: "admin@company.com", role: "Admin" },
@@ -25,21 +30,47 @@ const Alerts = () => {
   const [newEmail, setNewEmail] = useState("");
 
   const handleSaveSettings = () => {
-    toast.success("Alert settings saved successfully");
+    try {
+      thresholdSchema.parse(warningThreshold);
+      thresholdSchema.parse(criticalThreshold);
+      
+      if (warningThreshold >= criticalThreshold) {
+        toast.error("Warning threshold must be less than critical threshold");
+        return;
+      }
+      
+      toast.success("Alert settings saved successfully");
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      }
+    }
   };
 
   const handleAddRecipient = () => {
-    if (newEmail) {
+    try {
+      const validatedEmail = emailSchema.parse(newEmail);
+      
+      // Check for duplicate emails
+      if (recipients.some(r => r.email.toLowerCase() === validatedEmail.toLowerCase())) {
+        toast.error("This email is already in the recipients list");
+        return;
+      }
+      
       setRecipients([
         ...recipients,
         {
           id: recipients.length + 1,
-          email: newEmail,
+          email: validatedEmail,
           role: "User",
         },
       ]);
       setNewEmail("");
       toast.success("Recipient added successfully");
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      }
     }
   };
 
@@ -174,6 +205,7 @@ const Alerts = () => {
             <div className="flex gap-2">
               <Input
                 placeholder="email@company.com"
+                type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddRecipient()}

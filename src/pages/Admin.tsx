@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { z } from "zod";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+// Validation schemas
+const businessUnitSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+  budget: z.number().positive("Budget must be positive").max(10000000, "Budget must be less than 10,000,000"),
+});
+
+const projectSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+  businessUnit: z.string().trim().min(1, "Business unit is required").max(100, "Business unit must be less than 100 characters"),
+  budget: z.number().positive("Budget must be positive").max(10000000, "Budget must be less than 10,000,000"),
+});
 
 const mockBusinessUnits = [
   { id: 1, name: "Finance", projects: 3, budget: 5000 },
@@ -32,37 +45,56 @@ const Admin = () => {
   const [newProjectBudget, setNewProjectBudget] = useState("");
 
   const handleAddBusinessUnit = () => {
-    if (newBUName && newBUBudget) {
+    try {
+      const validated = businessUnitSchema.parse({
+        name: newBUName,
+        budget: parseInt(newBUBudget) || 0,
+      });
+      
       setBusinessUnits([
         ...businessUnits,
         {
           id: businessUnits.length + 1,
-          name: newBUName,
+          name: validated.name,
           projects: 0,
-          budget: parseInt(newBUBudget),
+          budget: validated.budget,
         },
       ]);
       setNewBUName("");
       setNewBUBudget("");
       toast.success("Business unit created successfully");
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      }
     }
   };
 
   const handleAddProject = () => {
-    if (newProjectName && newProjectBU && newProjectBudget) {
+    try {
+      const validated = projectSchema.parse({
+        name: newProjectName,
+        businessUnit: newProjectBU,
+        budget: parseInt(newProjectBudget) || 0,
+      });
+      
       setProjects([
         ...projects,
         {
           id: projects.length + 1,
-          name: newProjectName,
-          businessUnit: newProjectBU,
-          budget: parseInt(newProjectBudget),
+          name: validated.name,
+          businessUnit: validated.businessUnit,
+          budget: validated.budget,
         },
       ]);
       setNewProjectName("");
       setNewProjectBU("");
       setNewProjectBudget("");
       toast.success("Project created successfully");
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      }
     }
   };
 
@@ -108,6 +140,8 @@ const Admin = () => {
                     <Input
                       id="bu-budget"
                       type="number"
+                      min="0"
+                      max="10000000"
                       placeholder="5000"
                       value={newBUBudget}
                       onChange={(e) => setNewBUBudget(e.target.value)}
@@ -197,6 +231,8 @@ const Admin = () => {
                     <Input
                       id="project-budget"
                       type="number"
+                      min="0"
+                      max="10000000"
                       placeholder="2000"
                       value={newProjectBudget}
                       onChange={(e) => setNewProjectBudget(e.target.value)}
