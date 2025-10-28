@@ -7,11 +7,15 @@ import {
   Bell, 
   ShieldCheck,
   TrendingUp,
-  Menu
+  Menu,
+  LogOut,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 
 interface LayoutProps {
   children: ReactNode;
@@ -27,6 +31,7 @@ const navigation = [
 
 export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
+  const { user, roles, signOut } = useAuth();
 
   const NavContent = () => (
     <>
@@ -59,11 +64,35 @@ export const Layout = ({ children }: LayoutProps) => {
           );
         })}
       </nav>
-      <div className="border-t border-border p-4">
-        <div className="rounded-lg bg-gradient-primary p-4 text-white">
-          <p className="text-xs font-semibold">Need Help?</p>
-          <p className="mt-1 text-xs opacity-90">Check our documentation</p>
+      <div className="border-t border-border p-4 space-y-3">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/50">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+            <User className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">
+              {user?.email}
+            </p>
+            {roles.length > 0 && (
+              <div className="flex gap-1 mt-1">
+                {roles.map((role) => (
+                  <Badge key={role} variant="secondary" className="text-xs">
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full" 
+          onClick={signOut}
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
       </div>
     </>
   );

@@ -9,6 +9,8 @@ import Admin from "./pages/Admin";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -19,11 +21,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/requests" element={<Requests />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/alerts" element={<Alerts />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute requireRoles={["admin", "analyst"]}><Admin /></ProtectedRoute>} />
+          <Route path="/alerts" element={<ProtectedRoute requireRoles={["admin", "analyst"]}><Alerts /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
