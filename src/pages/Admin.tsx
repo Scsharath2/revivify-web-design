@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useBusinessUnits } from "@/hooks/useBusinessUnits";
 
 // Validation schemas
 const businessUnitSchema = z.object({
@@ -16,33 +17,11 @@ const businessUnitSchema = z.object({
   budget: z.number().positive("Budget must be positive").max(10000000, "Budget must be less than 10,000,000"),
 });
 
-const projectSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
-  businessUnit: z.string().trim().min(1, "Business unit is required").max(100, "Business unit must be less than 100 characters"),
-  budget: z.number().positive("Budget must be positive").max(10000000, "Budget must be less than 10,000,000"),
-});
-
-const mockBusinessUnits = [
-  { id: 1, name: "Finance", projects: 3, budget: 5000 },
-  { id: 2, name: "R&D", projects: 5, budget: 10000 },
-  { id: 3, name: "CloudOps", projects: 4, budget: 4000 },
-];
-
-const mockProjects = [
-  { id: 1, name: "Alpha", businessUnit: "Finance", budget: 2000 },
-  { id: 2, name: "Beta", businessUnit: "R&D", budget: 3500 },
-  { id: 3, name: "Gamma", businessUnit: "CloudOps", budget: 1500 },
-  { id: 4, name: "Delta", businessUnit: "R&D", budget: 2800 },
-];
-
 const Admin = () => {
-  const [businessUnits, setBusinessUnits] = useState(mockBusinessUnits);
-  const [projects, setProjects] = useState(mockProjects);
+  const { businessUnits, isLoading, create, delete: deleteUnit } = useBusinessUnits();
   const [newBUName, setNewBUName] = useState("");
   const [newBUBudget, setNewBUBudget] = useState("");
-  const [newProjectName, setNewProjectName] = useState("");
-  const [newProjectBU, setNewProjectBU] = useState("");
-  const [newProjectBudget, setNewProjectBudget] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleAddBusinessUnit = () => {
     try {
@@ -51,18 +30,14 @@ const Admin = () => {
         budget: parseInt(newBUBudget) || 0,
       });
       
-      setBusinessUnits([
-        ...businessUnits,
-        {
-          id: businessUnits.length + 1,
-          name: validated.name,
-          projects: 0,
-          budget: validated.budget,
-        },
-      ]);
+      create({
+        name: validated.name,
+        monthly_budget: validated.budget,
+      });
+      
       setNewBUName("");
       setNewBUBudget("");
-      toast.success("Business unit created successfully");
+      setIsDialogOpen(false);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -70,31 +45,9 @@ const Admin = () => {
     }
   };
 
-  const handleAddProject = () => {
-    try {
-      const validated = projectSchema.parse({
-        name: newProjectName,
-        businessUnit: newProjectBU,
-        budget: parseInt(newProjectBudget) || 0,
-      });
-      
-      setProjects([
-        ...projects,
-        {
-          id: projects.length + 1,
-          name: validated.name,
-          businessUnit: validated.businessUnit,
-          budget: validated.budget,
-        },
-      ]);
-      setNewProjectName("");
-      setNewProjectBU("");
-      setNewProjectBudget("");
-      toast.success("Project created successfully");
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        toast.error(error.errors[0].message);
-      }
+  const handleDeleteUnit = (id: string) => {
+    if (confirm("Are you sure you want to delete this business unit?")) {
+      deleteUnit(id);
     }
   };
 
@@ -111,7 +64,7 @@ const Admin = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Business Units</CardTitle>
-            <Dialog>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="mr-2 h-4 w-4" />
@@ -122,7 +75,7 @@ const Admin = () => {
                 <DialogHeader>
                   <DialogTitle>Create Business Unit</DialogTitle>
                   <DialogDescription>
-                    Add a new business unit to organize your projects
+                    Add a new business unit to manage AI spending
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -155,128 +108,52 @@ const Admin = () => {
             </Dialog>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Projects</TableHead>
-                  <TableHead className="text-right">Monthly Budget</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {businessUnits.map((unit) => (
-                  <TableRow key={unit.id}>
-                    <TableCell className="font-medium">{unit.name}</TableCell>
-                    <TableCell>{unit.projects}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${unit.budget.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="icon" variant="ghost">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Monthly Budget</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Projects */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Projects</CardTitle>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Project
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Project</DialogTitle>
-                  <DialogDescription>
-                    Add a new project under a business unit
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="project-name">Name</Label>
-                    <Input
-                      id="project-name"
-                      placeholder="Project Omega"
-                      value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="project-bu">Business Unit</Label>
-                    <Input
-                      id="project-bu"
-                      placeholder="Finance"
-                      value={newProjectBU}
-                      onChange={(e) => setNewProjectBU(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="project-budget">Budget ($)</Label>
-                    <Input
-                      id="project-budget"
-                      type="number"
-                      min="0"
-                      max="10000000"
-                      placeholder="2000"
-                      value={newProjectBudget}
-                      onChange={(e) => setNewProjectBudget(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleAddProject}>Create</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Business Unit</TableHead>
-                  <TableHead className="text-right">Budget</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projects.map((project) => (
-                  <TableRow key={project.id}>
-                    <TableCell className="font-medium">{project.name}</TableCell>
-                    <TableCell>{project.businessUnit}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${project.budget.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="icon" variant="ghost">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {businessUnits && businessUnits.length > 0 ? (
+                    businessUnits.map((unit) => (
+                      <TableRow key={unit.id}>
+                        <TableCell className="font-medium">{unit.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{unit.description || "—"}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          ${unit.monthly_budget ? Number(unit.monthly_budget).toLocaleString() : "0"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              onClick={() => handleDeleteUnit(unit.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        No business units found. Create one to get started.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

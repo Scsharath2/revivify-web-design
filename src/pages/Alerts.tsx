@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,25 +9,52 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Mail, Trash2 } from "lucide-react";
+import { Plus, Mail, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAlertConfigs } from "@/hooks/useAlertConfigs";
+import { useBusinessUnits } from "@/hooks/useBusinessUnits";
 
 // Validation schemas
 const emailSchema = z.string().trim().email("Invalid email address").max(255, "Email must be less than 255 characters");
 const thresholdSchema = z.number().int("Threshold must be a whole number").min(0, "Threshold must be at least 0").max(100, "Threshold must be at most 100");
 
-const mockRecipients = [
-  { id: 1, email: "admin@company.com", role: "Admin" },
-  { id: 2, email: "finance@company.com", role: "Finance Manager" },
-];
-
 const Alerts = () => {
+  const { businessUnits, isLoading: buLoading } = useBusinessUnits();
+  const { alertConfigs, isLoading, create, update } = useAlertConfigs();
+  
   const [warningThreshold, setWarningThreshold] = useState(80);
   const [criticalThreshold, setCriticalThreshold] = useState(90);
   const [alertsEnabled, setAlertsEnabled] = useState(true);
-  const [selectedBU, setSelectedBU] = useState("finance");
-  const [recipients, setRecipients] = useState(mockRecipients);
+  const [selectedBU, setSelectedBU] = useState<string>("");
+  const [recipients, setRecipients] = useState<string[]>([]);
   const [newEmail, setNewEmail] = useState("");
+  const [configId, setConfigId] = useState<string | undefined>();
+
+  // Load existing config for selected BU
+  useEffect(() => {
+    if (selectedBU && alertConfigs) {
+      const config = alertConfigs.find(c => c.name === selectedBU);
+      if (config) {
+        setConfigId(config.id);
+        setWarningThreshold(config.warning_threshold);
+        setCriticalThreshold(config.critical_threshold);
+        setAlertsEnabled(config.is_enabled);
+        setRecipients(config.recipients || []);
+      } else {
+        setConfigId(undefined);
+        setWarningThreshold(80);
+        setCriticalThreshold(90);
+        setAlertsEnabled(true);
+        setRecipients([]);
+      }
+    }
+  }, [selectedBU, alertConfigs]);
+
+  useEffect(() => {
+    if (businessUnits && businessUnits.length > 0 && !selectedBU) {
+      setSelectedBU(businessUnits[0].id);
+    }
+  }, [businessUnits, selectedBU]);
 
   const handleSaveSettings = () => {
     try {
@@ -38,8 +65,27 @@ const Alerts = () => {
         toast.error("Warning threshold must be less than critical threshold");
         return;
       }
+
+      const buName = businessUnits?.find(bu => bu.id === selectedBU)?.name || selectedBU;
       
-      toast.success("Alert settings saved successfully");
+      if (configId) {
+        update({
+          id: configId,
+          name: buName,
+          warning_threshold: warningThreshold,
+          critical_threshold: criticalThreshold,
+          recipients,
+          is_enabled: alertsEnabled,
+        });
+      } else {
+        create({
+          name: buName,
+          warning_threshold: warningThreshold,
+          critical_threshold: criticalThreshold,
+          recipients,
+          is_enabled: alertsEnabled,
+        });
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -51,20 +97,12 @@ const Alerts = () => {
     try {
       const validatedEmail = emailSchema.parse(newEmail);
       
-      // Check for duplicate emails
-      if (recipients.some(r => r.email.toLowerCase() === validatedEmail.toLowerCase())) {
+      if (recipients.includes(validatedEmail)) {
         toast.error("This email is already in the recipients list");
         return;
       }
       
-      setRecipients([
-        ...recipients,
-        {
-          id: recipients.length + 1,
-          email: validatedEmail,
-          role: "User",
-        },
-      ]);
+      setRecipients([...recipients, validatedEmail]);
       setNewEmail("");
       toast.success("Recipient added successfully");
     } catch (error) {
@@ -72,6 +110,11 @@ const Alerts = () => {
         toast.error(error.errors[0].message);
       }
     }
+  };
+
+  const handleRemoveRecipient = (email: string) => {
+    setRecipients(recipients.filter(r => r !== email));
+    toast.success("Recipient removed");
   };
 
   const handleTestEmail = () => {
@@ -94,34 +137,27 @@ const Alerts = () => {
             <CardDescription>Select which business unit to configure alerts for</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            {buLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
               <div className="space-y-2">
                 <Label htmlFor="business-unit">Business Unit</Label>
                 <Select value={selectedBU} onValueChange={setSelectedBU}>
                   <SelectTrigger id="business-unit">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a business unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="finance">Finance</SelectItem>
-                    <SelectItem value="rnd">R&D</SelectItem>
-                    <SelectItem value="cloudops">CloudOps</SelectItem>
+                    {businessUnits?.map((bu) => (
+                      <SelectItem key={bu.id} value={bu.id}>
+                        {bu.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="project">Project</Label>
-                <Select defaultValue="all">
-                  <SelectTrigger id="project">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Projects</SelectItem>
-                    <SelectItem value="alpha">Alpha</SelectItem>
-                    <SelectItem value="beta">Beta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -220,24 +256,34 @@ const Alerts = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recipients.map((recipient) => (
-                  <TableRow key={recipient.id}>
-                    <TableCell className="font-mono text-sm">
-                      {recipient.email}
-                    </TableCell>
-                    <TableCell>{recipient.role}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="icon" variant="ghost">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                {recipients.length > 0 ? (
+                  recipients.map((email) => (
+                    <TableRow key={email}>
+                      <TableCell className="font-mono text-sm">
+                        {email}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                          onClick={() => handleRemoveRecipient(email)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
+                      No recipients added yet
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
 
