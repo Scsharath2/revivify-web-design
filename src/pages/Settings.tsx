@@ -1,144 +1,180 @@
+import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Cpu, HardDrive, MemoryStick, Clock, RefreshCw, Database, Zap } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { User, Bell, Shield, LogOut } from "lucide-react";
 import { toast } from "sonner";
-
-const systemMetrics = [
-  { label: "CPU Usage", value: "24%", icon: Cpu, color: "text-chart-1" },
-  { label: "Memory Usage", value: "3.2 GB", icon: MemoryStick, color: "text-chart-2" },
-  { label: "Disk Usage", value: "42%", icon: HardDrive, color: "text-chart-3" },
-  { label: "Uptime", value: "72.4 hrs", icon: Clock, color: "text-chart-4" },
-];
+import { useAuth } from "@/hooks/useAuth";
 
 const Settings = () => {
-  const handleRefreshMetrics = () => {
-    toast.success("System metrics refreshed");
+  const { user, signOut } = useAuth();
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [budgetAlerts, setBudgetAlerts] = useState(true);
+  const [weeklyReports, setWeeklyReports] = useState(false);
+
+  const handleSaveProfile = () => {
+    toast.success("Profile updated successfully");
   };
 
-  const handleClearCache = () => {
-    toast.success("Cache cleared successfully");
+  const handleSaveNotifications = () => {
+    toast.success("Notification preferences saved");
   };
 
-  const handleOptimizeDB = () => {
-    toast.success("Database optimized successfully");
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out successfully");
   };
 
   return (
     <Layout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6 animate-fade-in max-w-4xl">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground mt-1">System information and maintenance</p>
+          <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
         </div>
 
-        {/* System Metrics */}
+        {/* Profile Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>System Performance</CardTitle>
-            <CardDescription>Real-time system resource usage</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {systemMetrics.map((metric) => (
-                <div
-                  key={metric.label}
-                  className="flex items-center gap-4 rounded-lg border border-border bg-muted/30 p-4"
-                >
-                  <div className={`rounded-lg bg-card p-3 ${metric.color}`}>
-                    <metric.icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {metric.label}
-                    </p>
-                    <p className="text-2xl font-bold text-foreground">
-                      {metric.value}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              <CardTitle>Profile Information</CardTitle>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Maintenance */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance & Cache Controls</CardTitle>
-            <CardDescription>Optimize system performance and clear cached data</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Button
-                variant="outline"
-                className="h-auto flex-col items-start gap-2 p-4"
-                onClick={handleRefreshMetrics}
-              >
-                <RefreshCw className="h-5 w-5 text-chart-1" />
-                <div className="text-left">
-                  <p className="font-semibold">Refresh Metrics</p>
-                  <p className="text-xs text-muted-foreground">
-                    Update system statistics
-                  </p>
-                </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-auto flex-col items-start gap-2 p-4"
-                onClick={handleClearCache}
-              >
-                <Zap className="h-5 w-5 text-chart-2" />
-                <div className="text-left">
-                  <p className="font-semibold">Clear Cache</p>
-                  <p className="text-xs text-muted-foreground">
-                    Remove cached data
-                  </p>
-                </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-auto flex-col items-start gap-2 p-4"
-                onClick={handleOptimizeDB}
-              >
-                <Database className="h-5 w-5 text-chart-3" />
-                <div className="text-left">
-                  <p className="font-semibold">Optimize Database</p>
-                  <p className="text-xs text-muted-foreground">
-                    Compact and optimize
-                  </p>
-                </div>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* App Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Application Information</CardTitle>
+            <CardDescription>Update your personal information and email</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Version</span>
-              <Badge variant="outline">v2.4.1</Badge>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                defaultValue={user?.email}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Contact support to change your email address
+              </p>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Environment</span>
-              <Badge>Production</Badge>
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="Enter your full name"
+                defaultValue={user?.user_metadata?.full_name}
+              />
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Database</span>
-              <Badge variant="outline">SQLite</Badge>
+            <Button onClick={handleSaveProfile}>Save Changes</Button>
+          </CardContent>
+        </Card>
+
+        {/* Notification Preferences */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              <CardTitle>Notifications</CardTitle>
             </div>
+            <CardDescription>Configure how you receive notifications</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Last Updated</span>
-              <span className="text-sm text-foreground">2024-02-15</span>
+              <div className="space-y-0.5">
+                <Label htmlFor="email-notifications">Email Notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Receive email updates about your account
+                </p>
+              </div>
+              <Switch
+                id="email-notifications"
+                checked={emailNotifications}
+                onCheckedChange={setEmailNotifications}
+              />
             </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="budget-alerts">Budget Alerts</Label>
+                <p className="text-sm text-muted-foreground">
+                  Get notified when approaching budget limits
+                </p>
+              </div>
+              <Switch
+                id="budget-alerts"
+                checked={budgetAlerts}
+                onCheckedChange={setBudgetAlerts}
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="weekly-reports">Weekly Reports</Label>
+                <p className="text-sm text-muted-foreground">
+                  Receive weekly spending summaries via email
+                </p>
+              </div>
+              <Switch
+                id="weekly-reports"
+                checked={weeklyReports}
+                onCheckedChange={setWeeklyReports}
+              />
+            </div>
+            <Button onClick={handleSaveNotifications}>Save Preferences</Button>
+          </CardContent>
+        </Card>
+
+        {/* Security */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              <CardTitle>Security</CardTitle>
+            </div>
+            <CardDescription>Manage your account security settings</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+              <div>
+                <p className="font-medium">Password</p>
+                <p className="text-sm text-muted-foreground">
+                  Last changed 30 days ago
+                </p>
+              </div>
+              <Button variant="outline">Change Password</Button>
+            </div>
+            <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+              <div>
+                <p className="font-medium">Two-Factor Authentication</p>
+                <p className="text-sm text-muted-foreground">
+                  Add an extra layer of security
+                </p>
+              </div>
+              <Button variant="outline">Enable 2FA</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Account Actions */}
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="text-destructive">Account Actions</CardTitle>
+            <CardDescription>Manage your account access</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="destructive"
+              onClick={handleSignOut}
+              className="w-full sm:w-auto"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </CardContent>
         </Card>
       </div>
