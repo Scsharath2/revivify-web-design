@@ -6,8 +6,12 @@ export const useDashboardMetrics = (dateRange?: { from?: Date; to?: Date }) => {
   const startDate = dateRange?.from || subDays(new Date(), 30);
   const endDate = dateRange?.to || new Date();
 
+  // Stabilize query key to avoid endless refetch loops
+  const startIso = startDate.toISOString();
+  const endIso = endDate.toISOString();
+
   return useQuery({
-    queryKey: ["dashboard-metrics", startDate, endDate],
+    queryKey: ["dashboard-metrics", startIso, endIso],
     queryFn: async () => {
       // Fetch API requests within date range
       const { data: requests, error } = await supabase

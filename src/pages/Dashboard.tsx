@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { MetricCard } from "@/components/MetricCard";
 import { BudgetProgress } from "@/components/BudgetProgress";
@@ -14,8 +14,8 @@ const Dashboard = () => {
   const [selectedFilter, setSelectedFilter] = useState("1m");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  // Calculate date range based on filter
-  const getDateRange = () => {
+// Calculate and memoize date range based on filter
+  const computedRange = useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
       return { from: dateRange.from, to: dateRange.to };
     }
@@ -30,9 +30,9 @@ const Dashboard = () => {
       default:
         return { from: subMonths(today, 1), to: today };
     }
-  };
+  }, [selectedFilter, dateRange]);
 
-  const { data: metrics, isLoading } = useDashboardMetrics(getDateRange());
+  const { data: metrics, isLoading } = useDashboardMetrics(computedRange);
 
   if (isLoading) {
     return (

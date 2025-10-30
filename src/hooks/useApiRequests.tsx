@@ -10,7 +10,16 @@ interface RequestFilters {
 
 export const useApiRequests = (filters: RequestFilters) => {
   return useQuery({
-    queryKey: ["api-requests", filters],
+    queryKey: [
+      "api-requests",
+      {
+        from: filters.dateRange?.from ? filters.dateRange.from.toISOString() : undefined,
+        to: filters.dateRange?.to ? filters.dateRange.to.toISOString() : undefined,
+        provider: filters.provider || "all",
+        businessUnit: filters.businessUnit || "all",
+        searchQuery: filters.searchQuery || "",
+      },
+    ],
     queryFn: async () => {
       let query = supabase
         .from("api_requests")

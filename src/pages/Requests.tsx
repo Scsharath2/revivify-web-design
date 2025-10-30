@@ -24,8 +24,8 @@ const Requests = () => {
   const { data: providers } = useProviders();
   const { businessUnits } = useBusinessUnits();
 
-  // Calculate date range based on filter
-  const getDateRange = () => {
+// Calculate and memoize date range based on filter
+  const computedRange = useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
       return { from: dateRange.from, to: dateRange.to };
     }
@@ -40,10 +40,10 @@ const Requests = () => {
       default:
         return { from: subMonths(today, 1), to: today };
     }
-  };
+  }, [selectedFilter, dateRange]);
 
   const { data: requests, isLoading } = useApiRequests({
-    dateRange: getDateRange(),
+    dateRange: computedRange,
     provider,
     businessUnit,
     searchQuery,
