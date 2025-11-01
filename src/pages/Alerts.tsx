@@ -9,10 +9,20 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Mail, Trash2, Loader2 } from "lucide-react";
+import { Plus, Mail, Trash2, Loader2, Edit2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAlertConfigs } from "@/hooks/useAlertConfigs";
 import { useBusinessUnits } from "@/hooks/useBusinessUnits";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Validation schemas
 const emailSchema = z.string().trim().email("Invalid email address").max(255, "Email must be less than 255 characters");
@@ -20,7 +30,7 @@ const thresholdSchema = z.number().int("Threshold must be a whole number").min(0
 
 const Alerts = () => {
   const { businessUnits, isLoading: buLoading } = useBusinessUnits();
-  const { alertConfigs, isLoading, create, update } = useAlertConfigs();
+  const { alertConfigs, isLoading, create, update, delete: deleteConfig, isDeleting } = useAlertConfigs();
   
   const [warningThreshold, setWarningThreshold] = useState(80);
   const [criticalThreshold, setCriticalThreshold] = useState(90);
@@ -29,6 +39,8 @@ const Alerts = () => {
   const [recipients, setRecipients] = useState<string[]>([]);
   const [newEmail, setNewEmail] = useState("");
   const [configId, setConfigId] = useState<string | undefined>();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [configToDelete, setConfigToDelete] = useState<string | null>(null);
 
   // Load existing config for selected BU
   useEffect(() => {
@@ -121,6 +133,23 @@ const Alerts = () => {
     toast.success("Test email sent successfully");
   };
 
+  const handleDeleteConfig = (id: string) => {
+    setConfigToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (configToDelete) {
+      deleteConfig(configToDelete);
+      setDeleteDialogOpen(false);
+      setConfigToDelete(null);
+      // Reset to first BU if current one was deleted
+      if (configToDelete === configId && businessUnits && businessUnits.length > 0) {
+        setSelectedBU(businessUnits[0].id);
+      }
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6 animate-fade-in">
@@ -129,6 +158,87 @@ const Alerts = () => {
           <h1 className="text-3xl font-bold text-foreground">Alert Configuration</h1>
           <p className="text-muted-foreground mt-1">Configure spending alerts and notifications</p>
         </div>
+
+        {/* All Configurations Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Alert Configurations</CardTitle>
+            <CardDescription>Overview of all configured business unit alerts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : alertConfigs && alertConfigs.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Business Unit</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Warning</TableHead>
+                    <TableHead>Critical</TableHead>
+                    <TableHead>Recipients</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {alertConfigs.map((config) => (
+                    <TableRow key={config.id}>
+                      <TableCell className="font-medium">{config.name}</TableCell>
+                      <TableCell>
+                        <Badge variant={config.is_enabled ? "default" : "secondary"}>
+                          {config.is_enabled ? "Enabled" : "Disabled"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="border-warning text-warning">
+                          {config.warning_threshold}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">
+                          {config.critical_threshold}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {config.recipients?.length || 0} recipient(s)
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            const bu = businessUnits?.find(b => b.name === config.name);
+                            if (bu) setSelectedBU(bu.id);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteConfig(config.id!)}
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8">
+                <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No alert configurations yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure your first alert below
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Scope Selection */}
         <Card>
@@ -293,6 +403,24 @@ const Alerts = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Alert Configuration?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the alert configuration. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
