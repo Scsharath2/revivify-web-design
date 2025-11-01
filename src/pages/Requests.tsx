@@ -4,15 +4,16 @@ import { FilterBar } from "@/components/FilterBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Download } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { useApiRequests } from "@/hooks/useApiRequests";
 import { useProviders } from "@/hooks/useProviders";
 import { useBusinessUnits } from "@/hooks/useBusinessUnits";
-import { format } from "date-fns";
-import { subDays, subMonths } from "date-fns";
+import { format, subDays, subMonths } from "date-fns";
+import { toast } from "sonner";
 
 const Requests = () => {
   const [selectedFilter, setSelectedFilter] = useState("1m");
@@ -48,6 +49,44 @@ const Requests = () => {
     businessUnit,
     searchQuery,
   });
+
+  const handleExport = () => {
+    if (!requests || requests.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    // Create CSV content
+    const headers = ["Timestamp", "Provider", "Model", "Business Unit", "Tokens", "Cost", "Status", "Response Time"];
+    const rows = requests.map(req => [
+      format(new Date(req.request_timestamp), "yyyy-MM-dd HH:mm:ss"),
+      req.providers?.display_name || "N/A",
+      req.models?.display_name || "N/A",
+      req.business_units?.name || "N/A",
+      req.total_tokens.toString(),
+      Number(req.cost).toFixed(4),
+      req.status_code?.toString() || "N/A",
+      req.response_time_ms ? `${req.response_time_ms}ms` : "N/A",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `api-requests-${format(new Date(), "yyyy-MM-dd-HHmmss")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`Exported ${requests.length} requests to CSV`);
+  };
 
   return (
     <Layout>
@@ -110,8 +149,17 @@ const Requests = () => {
 
         {/* Table */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Request Log</CardTitle>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={handleExport}
+              disabled={isLoading || !requests || requests.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
           </CardHeader>
           <CardContent>
             {isLoading ? (

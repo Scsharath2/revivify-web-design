@@ -11,12 +11,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Loader2, Building2, DollarSign, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, Loader2, Building2, DollarSign, ShieldCheck, Users2, UserPlus, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { useBusinessUnits } from "@/hooks/useBusinessUnits";
 import { useBudgets } from "@/hooks/useBudgets";
 import { usePolicies } from "@/hooks/usePolicies";
 import { useProviders } from "@/hooks/useProviders";
+import { useUsers, UserRole } from "@/hooks/useUsers";
 import { format } from "date-fns";
 
 // Validation schemas
@@ -40,6 +41,7 @@ const Admin = () => {
   const { businessUnits, isLoading: buLoading, create: createBU, delete: deleteBU } = useBusinessUnits();
   const { budgets, isLoading: budgetsLoading, create: createBudget, delete: deleteBudget } = useBudgets();
   const { policies, isLoading: policiesLoading, create: createPolicy, update: updatePolicy, delete: deletePolicy } = usePolicies();
+  const { users, isLoading: usersLoading, addRole, removeRole } = useUsers();
   const providersQuery = useProviders();
   const providers = providersQuery.data;
 
@@ -177,7 +179,7 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="units" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="units" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               Business Units
@@ -189,6 +191,10 @@ const Admin = () => {
             <TabsTrigger value="policies" className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" />
               Policies
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users2 className="h-4 w-4" />
+              Users
             </TabsTrigger>
           </TabsList>
 
@@ -590,6 +596,113 @@ const Admin = () => {
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                             No policies configured. Create one to get started.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Users Tab */}
+          <TabsContent value="users" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>User Management</CardTitle>
+                  <CardDescription>Manage user roles and permissions</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {usersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Roles</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users && users.length > 0 ? (
+                        users.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">
+                              {user.full_name || "—"}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {user.email}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-2">
+                                {user.roles.length > 0 ? (
+                                  user.roles.map((role) => (
+                                    <Badge 
+                                      key={role}
+                                      variant={role === "admin" ? "default" : "secondary"}
+                                      className="gap-1"
+                                    >
+                                      {role}
+                                      <button
+                                        onClick={() => removeRole({ userId: user.id, role })}
+                                        className="ml-1 hover:text-destructive"
+                                      >
+                                        <UserMinus className="h-3 w-3" />
+                                      </button>
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">No roles</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                {!user.roles.includes("admin") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => addRole({ userId: user.id, role: "admin" })}
+                                  >
+                                    <UserPlus className="h-4 w-4 mr-1" />
+                                    Admin
+                                  </Button>
+                                )}
+                                {!user.roles.includes("analyst") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => addRole({ userId: user.id, role: "analyst" })}
+                                  >
+                                    <UserPlus className="h-4 w-4 mr-1" />
+                                    Analyst
+                                  </Button>
+                                )}
+                                {!user.roles.includes("viewer") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => addRole({ userId: user.id, role: "viewer" })}
+                                  >
+                                    <UserPlus className="h-4 w-4 mr-1" />
+                                    Viewer
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                            No users found
                           </TableCell>
                         </TableRow>
                       )}
