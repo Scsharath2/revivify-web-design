@@ -51,10 +51,10 @@ export const Layout = ({ children }: LayoutProps) => {
             <Link key={item.name} to={item.href}>
               <div
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-300",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "bg-primary text-primary-foreground shadow-md scale-105"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:scale-105"
                 )}
               >
                 <item.icon className="h-4 w-4" />

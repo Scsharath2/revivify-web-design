@@ -1,13 +1,15 @@
 import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { FilterBar } from "@/components/FilterBar";
+import { EmptyState } from "@/components/EmptyState";
+import { LoadingTable } from "@/components/LoadingCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, Download } from "lucide-react";
+import { Search, Download, FileText } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { useApiRequests } from "@/hooks/useApiRequests";
 import { useProviders } from "@/hooks/useProviders";
@@ -90,15 +92,15 @@ const Requests = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6">
         {/* Header */}
-        <div>
+        <div className="animate-fade-in">
           <h1 className="text-3xl font-bold text-foreground">Requests</h1>
           <p className="text-muted-foreground mt-1">View and analyze all API requests</p>
         </div>
 
         {/* Filters */}
-        <div className="space-y-4">
+        <div className="space-y-4 animate-fade-in animate-stagger-1">
           <FilterBar
             selectedFilter={selectedFilter}
             onFilterChange={setSelectedFilter}
@@ -114,12 +116,12 @@ const Requests = () => {
                   placeholder="Search requests..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 transition-all duration-300 focus:shadow-md"
                 />
               </div>
             </div>
             <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] transition-all duration-300 hover:border-primary">
                 <SelectValue placeholder="Provider" />
               </SelectTrigger>
               <SelectContent>
@@ -132,7 +134,7 @@ const Requests = () => {
               </SelectContent>
             </Select>
             <Select value={businessUnit} onValueChange={setBusinessUnit}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] transition-all duration-300 hover:border-primary">
                 <SelectValue placeholder="Business Unit" />
               </SelectTrigger>
               <SelectContent>
@@ -148,25 +150,33 @@ const Requests = () => {
         </div>
 
         {/* Table */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Request Log</CardTitle>
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={handleExport}
-              disabled={isLoading || !requests || requests.length === 0}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
+        {isLoading ? (
+          <div className="animate-fade-in">
+            <LoadingTable />
+          </div>
+        ) : !requests || requests.length === 0 ? (
+          <div className="animate-fade-up">
+            <EmptyState
+              icon={FileText}
+              title="No Requests Found"
+              description="No API requests match your current filters. Try adjusting the date range or removing some filters to see more results."
+            />
+          </div>
+        ) : (
+          <Card className="animate-fade-in animate-stagger-2 hover-lift">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Request Log</CardTitle>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleExport}
+                className="hover-scale"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+            </CardHeader>
+            <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -181,48 +191,46 @@ const Requests = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {requests && requests.length > 0 ? (
-                      requests.map((request) => (
-                        <TableRow key={request.id} className="hover:bg-muted/50">
-                          <TableCell className="font-mono text-sm">
-                            {format(new Date(request.request_timestamp), "yyyy-MM-dd HH:mm:ss")}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{request.providers?.display_name}</Badge>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {request.models?.display_name}
-                          </TableCell>
-                          <TableCell>{request.business_units?.name || "N/A"}</TableCell>
-                          <TableCell className="text-right font-mono">
-                            {request.total_tokens.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right font-mono">
-                            ${Number(request.cost).toFixed(2)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "default" : "destructive"}
-                              className={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "bg-success" : ""}
-                            >
-                              {request.status_code ? request.status_code : "N/A"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          No requests found
+                    {requests.map((request, index) => (
+                      <TableRow 
+                        key={request.id} 
+                        className="hover:bg-muted/50 transition-colors duration-200 cursor-pointer animate-fade-in"
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                      >
+                        <TableCell className="font-mono text-sm">
+                          {format(new Date(request.request_timestamp), "yyyy-MM-dd HH:mm:ss")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="transition-all duration-200 hover:bg-primary/10">
+                            {request.providers?.display_name}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {request.models?.display_name}
+                        </TableCell>
+                        <TableCell>{request.business_units?.name || "N/A"}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {request.total_tokens.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold">
+                          ${Number(request.cost).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "default" : "destructive"}
+                            className={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "bg-success hover-scale" : "hover-scale"}
+                          >
+                            {request.status_code ? request.status_code : "N/A"}
+                          </Badge>
                         </TableCell>
                       </TableRow>
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </Layout>
   );

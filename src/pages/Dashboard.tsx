@@ -3,9 +3,11 @@ import { Layout } from "@/components/Layout";
 import { MetricCard } from "@/components/MetricCard";
 import { BudgetProgress } from "@/components/BudgetProgress";
 import { FilterBar } from "@/components/FilterBar";
+import { EmptyState } from "@/components/EmptyState";
+import { LoadingCard, LoadingChart } from "@/components/LoadingCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { DollarSign, TrendingUp, Zap, Users, Loader2 } from "lucide-react";
+import { DollarSign, TrendingUp, Zap, Users, Database } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { subDays, subMonths } from "date-fns";
@@ -37,58 +39,94 @@ const Dashboard = () => {
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-muted/50 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-muted/50 rounded animate-pulse" />
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <LoadingCard key={i} />
+            ))}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <LoadingChart key={i} />
+            ))}
+          </div>
         </div>
       </Layout>
     );
   }
 
+  const hasNoData = !metrics || (metrics.totalRequests === 0 && metrics.totalSpend === 0);
+
   return (
     <Layout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6">
         {/* Header */}
-        <div>
+        <div className="animate-fade-in">
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Monitor your AI spending and usage metrics</p>
         </div>
 
         {/* Filter Bar */}
-        <FilterBar
-          selectedFilter={selectedFilter}
-          onFilterChange={setSelectedFilter}
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-        />
+        <div className="animate-fade-in animate-stagger-1">
+          <FilterBar
+            selectedFilter={selectedFilter}
+            onFilterChange={setSelectedFilter}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+        </div>
+
+        {hasNoData ? (
+          <div className="animate-fade-up">
+            <EmptyState
+              icon={Database}
+              title="No Data Available"
+              description="Start tracking your AI spending by making API requests. Once you have data, you'll see detailed metrics and analytics here."
+            />
+          </div>
+        ) : (
+          <>
 
         {/* Metrics */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            title="Total Spend"
-            value={`$${metrics?.totalSpend.toFixed(2) || "0.00"}`}
-            icon={<DollarSign className="h-5 w-5" />}
-          />
-          <MetricCard
-            title="Total Requests"
-            value={metrics?.totalRequests.toLocaleString() || "0"}
-            icon={<Zap className="h-5 w-5" />}
-          />
-          <MetricCard
-            title="Avg Cost/Request"
-            value={`$${metrics?.avgCostPerRequest.toFixed(2) || "0.00"}`}
-            icon={<TrendingUp className="h-5 w-5" />}
-          />
-          <MetricCard
-            title="Active Projects"
-            value={metrics?.activeProjects.toString() || "0"}
-            icon={<Users className="h-5 w-5" />}
-          />
+          <div className="animate-fade-in animate-stagger-1">
+            <MetricCard
+              title="Total Spend"
+              value={`$${metrics?.totalSpend.toFixed(2) || "0.00"}`}
+              icon={<DollarSign className="h-5 w-5" />}
+            />
+          </div>
+          <div className="animate-fade-in animate-stagger-2">
+            <MetricCard
+              title="Total Requests"
+              value={metrics?.totalRequests.toLocaleString() || "0"}
+              icon={<Zap className="h-5 w-5" />}
+            />
+          </div>
+          <div className="animate-fade-in animate-stagger-3">
+            <MetricCard
+              title="Avg Cost/Request"
+              value={`$${metrics?.avgCostPerRequest.toFixed(2) || "0.00"}`}
+              icon={<TrendingUp className="h-5 w-5" />}
+            />
+          </div>
+          <div className="animate-fade-in animate-stagger-4">
+            <MetricCard
+              title="Active Projects"
+              value={metrics?.activeProjects.toString() || "0"}
+              icon={<Users className="h-5 w-5" />}
+            />
+          </div>
         </div>
 
         {/* Charts */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Spending Trend */}
-          <Card className="animate-fade-in">
+          <Card className="animate-fade-in hover-lift">
             <CardHeader>
               <CardTitle>Spending Trend</CardTitle>
             </CardHeader>
@@ -131,7 +169,7 @@ const Dashboard = () => {
           </Card>
 
           {/* Provider Distribution */}
-          <Card className="animate-fade-in">
+          <Card className="animate-fade-in animate-stagger-1 hover-lift">
             <CardHeader>
               <CardTitle>Spending by Provider</CardTitle>
             </CardHeader>
@@ -176,7 +214,7 @@ const Dashboard = () => {
           </Card>
 
           {/* Model Usage */}
-          <Card className="animate-fade-in">
+          <Card className="animate-fade-in animate-stagger-2 hover-lift">
             <CardHeader>
               <CardTitle>Requests by Model</CardTitle>
             </CardHeader>
@@ -211,8 +249,12 @@ const Dashboard = () => {
           </Card>
 
           {/* Budget Progress */}
-          <BudgetProgress items={metrics?.budgetProgress || []} />
+          <div className="animate-fade-in animate-stagger-3">
+            <BudgetProgress items={metrics?.budgetProgress || []} />
+          </div>
         </div>
+        </>
+        )}
       </div>
     </Layout>
   );
