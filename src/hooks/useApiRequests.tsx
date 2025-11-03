@@ -26,7 +26,7 @@ export const useApiRequests = (filters: RequestFilters) => {
           business_units(name)
         `)
         .order("request_timestamp", { ascending: false })
-        .limit(100);
+        .limit(10000);
 
       // Apply date range filter
       if (filters.dateRange?.from) {
@@ -114,11 +114,11 @@ export const useApiRequests = (filters: RequestFilters) => {
 
       // Apply pagination
       const page = filters.page || 1;
-      const pageSize = filters.pageSize || 50;
+      const pageSize = filters.pageSize || 100;
       const startIndex = (page - 1) * pageSize;
       const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
 
-      return { data: paginatedData, totalCount };
+      return { data: paginatedData, totalCount, allData: filteredData };
     },
   });
 };

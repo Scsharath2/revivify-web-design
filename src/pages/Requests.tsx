@@ -3,6 +3,7 @@ import { Layout } from "@/components/Layout";
 import { FilterBar } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingTable } from "@/components/LoadingCard";
+import { ColumnCustomizer, ColumnConfig } from "@/components/ColumnCustomizer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -29,11 +30,28 @@ const Requests = () => {
   const [sortBy, setSortBy] = useState<string>("timestamp");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 50;
+  const pageSize = 100;
+
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { id: "timestamp", label: "Timestamp", visible: true, sortable: true },
+    { id: "provider", label: "Provider", visible: true, sortable: true },
+    { id: "model", label: "Model", visible: true, sortable: true },
+    { id: "business_unit", label: "Business Unit", visible: true, sortable: false },
+    { id: "tokens", label: "Total Tokens", visible: true, sortable: true },
+    { id: "prompt_tokens", label: "Prompt Tokens", visible: false, sortable: true },
+    { id: "completion_tokens", label: "Completion Tokens", visible: false, sortable: true },
+    { id: "cost", label: "Cost", visible: true, sortable: true },
+    { id: "status", label: "Status", visible: true, sortable: false },
+    { id: "response_time", label: "Response Time", visible: false, sortable: true },
+    { id: "was_blocked", label: "Blocked", visible: false, sortable: false },
+    { id: "request_id", label: "Request ID", visible: false, sortable: false },
+  ]);
 
   const { data: providers } = useProviders();
   const { businessUnits } = useBusinessUnits();
   const { data: models } = useModels();
+
+  const visibleColumns = useMemo(() => columns.filter(col => col.visible), [columns]);
 
 // Calculate and memoize date range based on filter
   const computedRange = useMemo(() => {
@@ -85,23 +103,46 @@ const Requests = () => {
   };
 
   const handleExport = () => {
-    if (!requests || requests.length === 0) {
+    const dataToExport = requestsData?.allData || [];
+    if (dataToExport.length === 0) {
       toast.error("No data to export");
       return;
     }
 
-    // Create CSV content
-    const headers = ["Timestamp", "Provider", "Model", "Business Unit", "Tokens", "Cost", "Status", "Response Time"];
-    const rows = requests.map(req => [
-      format(new Date(req.request_timestamp), "yyyy-MM-dd HH:mm:ss"),
-      req.providers?.display_name || "N/A",
-      req.models?.display_name || "N/A",
-      req.business_units?.name || "N/A",
-      req.total_tokens.toString(),
-      Number(req.cost).toFixed(4),
-      req.status_code?.toString() || "N/A",
-      req.response_time_ms ? `${req.response_time_ms}ms` : "N/A",
-    ]);
+    // Create CSV content based on visible columns
+    const headers = visibleColumns.map(col => col.label);
+    const rows = dataToExport.map(req => {
+      return visibleColumns.map(col => {
+        switch (col.id) {
+          case "timestamp":
+            return format(new Date(req.request_timestamp), "yyyy-MM-dd HH:mm:ss");
+          case "provider":
+            return req.providers?.display_name || "N/A";
+          case "model":
+            return req.models?.display_name || "N/A";
+          case "business_unit":
+            return req.business_units?.name || "N/A";
+          case "tokens":
+            return req.total_tokens.toString();
+          case "prompt_tokens":
+            return req.prompt_tokens.toString();
+          case "completion_tokens":
+            return req.completion_tokens.toString();
+          case "cost":
+            return Number(req.cost).toFixed(4);
+          case "status":
+            return req.status_code?.toString() || "N/A";
+          case "response_time":
+            return req.response_time_ms ? `${req.response_time_ms}ms` : "N/A";
+          case "was_blocked":
+            return req.was_blocked ? "Yes" : "No";
+          case "request_id":
+            return req.id;
+          default:
+            return "N/A";
+        }
+      });
+    });
 
     const csvContent = [
       headers.join(","),
@@ -119,7 +160,7 @@ const Requests = () => {
     link.click();
     document.body.removeChild(link);
     
-    toast.success(`Exported ${requests.length} requests to CSV`);
+    toast.success(`Exported ${dataToExport.length} requests to CSV`);
   };
 
   return (
@@ -204,74 +245,41 @@ const Requests = () => {
         ) : (
           <Card className="animate-fade-in animate-stagger-2 hover-lift">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Request Log</CardTitle>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={handleExport}
-                className="hover-scale"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
+              <CardTitle>Request Log ({totalCount.toLocaleString()} total)</CardTitle>
+              <div className="flex gap-2">
+                <ColumnCustomizer columns={columns} onColumnsChange={setColumns} />
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleExport}
+                  className="hover-scale"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleSort("timestamp")}
-                          className="hover:bg-transparent p-0"
-                        >
-                          Timestamp
-                          <SortIcon column="timestamp" />
-                        </Button>
-                      </TableHead>
-                      <TableHead>
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleSort("provider")}
-                          className="hover:bg-transparent p-0"
-                        >
-                          Provider
-                          <SortIcon column="provider" />
-                        </Button>
-                      </TableHead>
-                      <TableHead>
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleSort("model")}
-                          className="hover:bg-transparent p-0"
-                        >
-                          Model
-                          <SortIcon column="model" />
-                        </Button>
-                      </TableHead>
-                      <TableHead>Business Unit</TableHead>
-                      <TableHead className="text-right">
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleSort("tokens")}
-                          className="hover:bg-transparent p-0"
-                        >
-                          Tokens
-                          <SortIcon column="tokens" />
-                        </Button>
-                      </TableHead>
-                      <TableHead className="text-right">
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleSort("cost")}
-                          className="hover:bg-transparent p-0"
-                        >
-                          Cost
-                          <SortIcon column="cost" />
-                        </Button>
-                      </TableHead>
-                      <TableHead>Status</TableHead>
+                      {visibleColumns.map((column) => (
+                        <TableHead key={column.id} className={column.id.includes("tokens") || column.id === "cost" ? "text-right" : ""}>
+                          {column.sortable ? (
+                            <Button
+                              variant="ghost"
+                              onClick={() => handleSort(column.id)}
+                              className="hover:bg-transparent p-0"
+                            >
+                              {column.label}
+                              <SortIcon column={column.id} />
+                            </Button>
+                          ) : (
+                            column.label
+                          )}
+                        </TableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -279,34 +287,56 @@ const Requests = () => {
                       <TableRow 
                         key={request.id} 
                         className="hover:bg-muted/50 transition-colors duration-200 cursor-pointer animate-fade-in"
-                        style={{ animationDelay: `${index * 0.05}s` }}
+                        style={{ animationDelay: `${Math.min(index * 0.02, 1)}s` }}
                       >
-                        <TableCell className="font-mono text-sm">
-                          {format(new Date(request.request_timestamp), "yyyy-MM-dd HH:mm:ss")}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="transition-all duration-200 hover:bg-primary/10">
-                            {request.providers?.display_name}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {request.models?.display_name}
-                        </TableCell>
-                        <TableCell>{request.business_units?.name || "N/A"}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          {request.total_tokens.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-semibold">
-                          ${Number(request.cost).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "default" : "destructive"}
-                            className={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "bg-success hover-scale" : "hover-scale"}
+                        {visibleColumns.map((column) => (
+                          <TableCell 
+                            key={column.id}
+                            className={
+                              column.id === "timestamp" ? "font-mono text-sm" :
+                              column.id.includes("tokens") || column.id === "cost" ? "text-right font-mono" :
+                              column.id === "model" ? "font-medium" :
+                              column.id === "request_id" ? "font-mono text-xs" :
+                              ""
+                            }
                           >
-                            {request.status_code ? request.status_code : "N/A"}
-                          </Badge>
-                        </TableCell>
+                            {column.id === "timestamp" && format(new Date(request.request_timestamp), "yyyy-MM-dd HH:mm:ss")}
+                            {column.id === "provider" && (
+                              <Badge variant="outline" className="transition-all duration-200 hover:bg-primary/10">
+                                {request.providers?.display_name}
+                              </Badge>
+                            )}
+                            {column.id === "model" && request.models?.display_name}
+                            {column.id === "business_unit" && (request.business_units?.name || "N/A")}
+                            {column.id === "tokens" && request.total_tokens.toLocaleString()}
+                            {column.id === "prompt_tokens" && request.prompt_tokens.toLocaleString()}
+                            {column.id === "completion_tokens" && request.completion_tokens.toLocaleString()}
+                            {column.id === "cost" && (
+                              <span className="font-semibold">${Number(request.cost).toFixed(4)}</span>
+                            )}
+                            {column.id === "status" && (
+                              <Badge
+                                variant={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "default" : "destructive"}
+                                className={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "bg-success hover-scale" : "hover-scale"}
+                              >
+                                {request.status_code || "N/A"}
+                              </Badge>
+                            )}
+                            {column.id === "response_time" && (
+                              request.response_time_ms ? `${request.response_time_ms}ms` : "N/A"
+                            )}
+                            {column.id === "was_blocked" && (
+                              <Badge variant={request.was_blocked ? "destructive" : "secondary"}>
+                                {request.was_blocked ? "Blocked" : "Allowed"}
+                              </Badge>
+                            )}
+                            {column.id === "request_id" && (
+                              <span className="truncate block max-w-[100px]" title={request.id}>
+                                {request.id.substring(0, 8)}...
+                              </span>
+                            )}
+                          </TableCell>
+                        ))}
                       </TableRow>
                     ))}
                   </TableBody>
