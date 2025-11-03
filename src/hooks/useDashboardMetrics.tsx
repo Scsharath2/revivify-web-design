@@ -91,21 +91,38 @@ export const useDashboardMetrics = (dateRange?: { from?: Date; to?: Date }) => {
         requests,
       }));
 
-      // Get budgets
+      // Get budgets and calculate actual spending
       const { data: budgets } = await supabase
         .from("budgets")
         .select(`
           *,
-          business_units(name)
-        `)
-        .gte("period_start", startOfMonth(new Date()).toISOString().split("T")[0])
-        .lte("period_end", endOfMonth(new Date()).toISOString().split("T")[0]);
+          business_units(name),
+          providers(display_name)
+        `);
 
-      const budgetProgress = budgets?.map(b => ({
-        name: b.business_units?.name || "Unknown",
-        spent: Number(b.spent_amount),
-        budget: Number(b.allocated_amount),
-      })) || [];
+      const budgetProgress = budgets?.map(b => {
+        // Calculate actual spending for this budget
+        const budgetRequests = requests?.filter(r => {
+          const reqDate = new Date(r.request_timestamp);
+          const periodStart = new Date(b.period_start);
+          const periodEnd = new Date(b.period_end);
+          
+          // Match by business unit or provider
+          const matchesBU = b.business_unit_id && r.business_unit_id === b.business_unit_id;
+          const matchesProvider = b.provider_id && r.provider_id === b.provider_id;
+          const inPeriod = reqDate >= periodStart && reqDate <= periodEnd;
+          
+          return inPeriod && (matchesBU || matchesProvider);
+        }) || [];
+        
+        const actualSpent = budgetRequests.reduce((sum, r) => sum + Number(r.cost), 0);
+        
+        return {
+          name: b.business_units?.name || b.providers?.display_name || "Unknown",
+          spent: actualSpent,
+          budget: Number(b.allocated_amount),
+        };
+      }) || [];
 
       return {
         totalSpend,

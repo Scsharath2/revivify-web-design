@@ -60,6 +60,8 @@ const Requests = () => {
     }
     const today = new Date();
     switch (selectedFilter) {
+      case "24h":
+        return { from: subDays(today, 1), to: today };
       case "7d":
         return { from: subDays(today, 7), to: today };
       case "30d":
@@ -86,6 +88,11 @@ const Requests = () => {
   const requests = requestsData?.data || [];
   const totalCount = requestsData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
+
+  const handleFilterChange = (filter: string) => {
+    setSelectedFilter(filter);
+    setDateRange(undefined); // Clear custom date range when preset filter is selected
+  };
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -176,7 +183,7 @@ const Requests = () => {
         <div className="space-y-4 animate-fade-in animate-stagger-1">
           <FilterBar
             selectedFilter={selectedFilter}
-            onFilterChange={setSelectedFilter}
+            onFilterChange={handleFilterChange}
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
           />
