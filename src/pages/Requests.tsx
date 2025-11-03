@@ -7,25 +7,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
-import { Search, Download, FileText } from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Search, Download, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { useApiRequests } from "@/hooks/useApiRequests";
 import { useProviders } from "@/hooks/useProviders";
 import { useBusinessUnits } from "@/hooks/useBusinessUnits";
+import { useModels } from "@/hooks/useModels";
 import { format, subDays, subMonths } from "date-fns";
 import { toast } from "sonner";
 
 const Requests = () => {
   const [selectedFilter, setSelectedFilter] = useState("1m");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [provider, setProvider] = useState("all");
-  const [businessUnit, setBusinessUnit] = useState("all");
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [selectedBusinessUnits, setSelectedBusinessUnits] = useState<string[]>([]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("timestamp");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
 
   const { data: providers } = useProviders();
   const { businessUnits } = useBusinessUnits();
+  const { data: models } = useModels();
 
 // Calculate and memoize date range based on filter
   const computedRange = useMemo(() => {
@@ -45,12 +53,36 @@ const Requests = () => {
     }
   }, [selectedFilter, dateRange]);
 
-  const { data: requests, isLoading } = useApiRequests({
+  const { data: requestsData, isLoading } = useApiRequests({
     dateRange: computedRange,
-    provider,
-    businessUnit,
+    providers: selectedProviders,
+    businessUnits: selectedBusinessUnits,
+    models: selectedModels,
     searchQuery,
+    sortBy,
+    sortOrder,
+    page: currentPage,
+    pageSize,
   });
+
+  const requests = requestsData?.data || [];
+  const totalCount = requestsData?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("desc");
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortBy !== column) return <ArrowUpDown className="h-4 w-4 ml-1" />;
+    return sortOrder === "asc" ? <ArrowUp className="h-4 w-4 ml-1" /> : <ArrowDown className="h-4 w-4 ml-1" />;
+  };
 
   const handleExport = () => {
     if (!requests || requests.length === 0) {
@@ -115,37 +147,44 @@ const Requests = () => {
                 <Input
                   placeholder="Search requests..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="pl-9 transition-all duration-300 focus:shadow-md"
                 />
               </div>
             </div>
-            <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger className="w-[180px] transition-all duration-300 hover:border-primary">
-                <SelectValue placeholder="Provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Providers</SelectItem>
-                {providers?.map((p) => (
-                  <SelectItem key={p.id} value={p.display_name}>
-                    {p.display_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={businessUnit} onValueChange={setBusinessUnit}>
-              <SelectTrigger className="w-[180px] transition-all duration-300 hover:border-primary">
-                <SelectValue placeholder="Business Unit" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Units</SelectItem>
-                {businessUnits?.map((bu) => (
-                  <SelectItem key={bu.id} value={bu.name}>
-                    {bu.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MultiSelect
+              options={providers?.map((p) => ({ label: p.display_name, value: p.display_name })) || []}
+              selected={selectedProviders}
+              onChange={(values) => {
+                setSelectedProviders(values);
+                setCurrentPage(1);
+              }}
+              placeholder="Providers"
+              className="w-[200px]"
+            />
+            <MultiSelect
+              options={models?.map((m) => ({ label: m.display_name, value: m.display_name })) || []}
+              selected={selectedModels}
+              onChange={(values) => {
+                setSelectedModels(values);
+                setCurrentPage(1);
+              }}
+              placeholder="Models"
+              className="w-[200px]"
+            />
+            <MultiSelect
+              options={businessUnits?.map((bu) => ({ label: bu.name, value: bu.name })) || []}
+              selected={selectedBusinessUnits}
+              onChange={(values) => {
+                setSelectedBusinessUnits(values);
+                setCurrentPage(1);
+              }}
+              placeholder="Business Units"
+              className="w-[200px]"
+            />
           </div>
         </div>
 
@@ -181,12 +220,57 @@ const Requests = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>Provider</TableHead>
-                      <TableHead>Model</TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("timestamp")}
+                          className="hover:bg-transparent p-0"
+                        >
+                          Timestamp
+                          <SortIcon column="timestamp" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("provider")}
+                          className="hover:bg-transparent p-0"
+                        >
+                          Provider
+                          <SortIcon column="provider" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("model")}
+                          className="hover:bg-transparent p-0"
+                        >
+                          Model
+                          <SortIcon column="model" />
+                        </Button>
+                      </TableHead>
                       <TableHead>Business Unit</TableHead>
-                      <TableHead className="text-right">Tokens</TableHead>
-                      <TableHead className="text-right">Cost</TableHead>
+                      <TableHead className="text-right">
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("tokens")}
+                          className="hover:bg-transparent p-0"
+                        >
+                          Tokens
+                          <SortIcon column="tokens" />
+                        </Button>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("cost")}
+                          className="hover:bg-transparent p-0"
+                        >
+                          Cost
+                          <SortIcon column="cost" />
+                        </Button>
+                      </TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -228,6 +312,53 @@ const Requests = () => {
                   </TableBody>
                 </Table>
               </div>
+              
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} requests
+                  </div>
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <PaginationItem key={pageNum}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(pageNum)}
+                              isActive={currentPage === pageNum}
+                              className="cursor-pointer"
+                            >
+                              {pageNum}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
