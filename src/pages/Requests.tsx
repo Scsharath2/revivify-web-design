@@ -155,9 +155,9 @@ const Requests = () => {
           case "request_id":
             return req.id;
           case "request_message":
-            return (req.request_message ? String(req.request_message) : "").replace(/"/g, '""');
+            return (req.request_message || "").replace(/"/g, '""');
           case "response_message":
-            return (req.response_message ? String(req.response_message) : "").replace(/"/g, '""');
+            return (req.response_message || "").replace(/"/g, '""');
           default:
             return "N/A";
         }
@@ -346,13 +346,13 @@ const Requests = () => {
               request.response_time_ms ? `${request.response_time_ms}ms` : "N/A"
             )}
             {column.id === "request_message" && (
-              <span className="truncate block max-w-[420px]" title={(request as any).request_message || ""}>
-                {(request as any).request_message || "—"}
+              <span className="truncate block max-w-[420px]" title={request.request_message || ""}>
+                {request.request_message || "—"}
               </span>
             )}
             {column.id === "response_message" && (
-              <span className="truncate block max-w-[420px]" title={(request as any).response_message || ""}>
-                {(request as any).response_message || "—"}
+              <span className="truncate block max-w-[420px]" title={request.response_message || ""}>
+                {request.response_message || "—"}
               </span>
             )}
             {column.id === "request_id" && (

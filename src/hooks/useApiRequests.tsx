@@ -67,8 +67,8 @@ export const useApiRequests = (filters: RequestFilters) => {
           r.id.toLowerCase().includes(query) ||
           r.models?.display_name.toLowerCase().includes(query) ||
           r.providers?.display_name.toLowerCase().includes(query) ||
-          ((r as any).request_message ? (r as any).request_message.toLowerCase().includes(query) : false) ||
-          ((r as any).response_message ? (r as any).response_message.toLowerCase().includes(query) : false)
+          (r.request_message ? r.request_message.toLowerCase().includes(query) : false) ||
+          (r.response_message ? r.response_message.toLowerCase().includes(query) : false)
         );
       }
 
