@@ -23,6 +23,8 @@ const Dashboard = () => {
     }
     const today = new Date();
     switch (selectedFilter) {
+      case "24h":
+        return { from: subDays(today, 1), to: today };
       case "7d":
         return { from: subDays(today, 7), to: today };
       case "30d":
