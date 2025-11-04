@@ -61,8 +61,10 @@ export type Database = {
           model_id: string
           prompt_tokens: number
           provider_id: string
+          request_message: string | null
           request_timestamp: string
           request_tokens: Json | null
+          response_message: string | null
           response_time_ms: number | null
           response_tokens: Json | null
           status_code: number | null
@@ -79,8 +81,10 @@ export type Database = {
           model_id: string
           prompt_tokens?: number
           provider_id: string
+          request_message?: string | null
           request_timestamp?: string
           request_tokens?: Json | null
+          response_message?: string | null
           response_time_ms?: number | null
           response_tokens?: Json | null
           status_code?: number | null
@@ -97,8 +101,10 @@ export type Database = {
           model_id?: string
           prompt_tokens?: number
           provider_id?: string
+          request_message?: string | null
           request_timestamp?: string
           request_tokens?: Json | null
+          response_message?: string | null
           response_time_ms?: number | null
           response_tokens?: Json | null
           status_code?: number | null
