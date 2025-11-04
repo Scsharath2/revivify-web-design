@@ -62,7 +62,9 @@ export type Database = {
           prompt_tokens: number
           provider_id: string
           request_timestamp: string
+          request_tokens: Json | null
           response_time_ms: number | null
+          response_tokens: Json | null
           status_code: number | null
           total_tokens: number
           was_blocked: boolean
@@ -78,7 +80,9 @@ export type Database = {
           prompt_tokens?: number
           provider_id: string
           request_timestamp?: string
+          request_tokens?: Json | null
           response_time_ms?: number | null
+          response_tokens?: Json | null
           status_code?: number | null
           total_tokens?: number
           was_blocked?: boolean
@@ -94,7 +98,9 @@ export type Database = {
           prompt_tokens?: number
           provider_id?: string
           request_timestamp?: string
+          request_tokens?: Json | null
           response_time_ms?: number | null
+          response_tokens?: Json | null
           status_code?: number | null
           total_tokens?: number
           was_blocked?: boolean
