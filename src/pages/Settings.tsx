@@ -267,23 +267,6 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Account Actions */}
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle className="text-destructive">Account Actions</CardTitle>
-            <CardDescription>Manage your account access</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="destructive"
-              onClick={handleSignOut}
-              className="w-full sm:w-auto"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Password Change Dialog */}

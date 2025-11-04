@@ -36,6 +36,8 @@ const Requests = () => {
     { id: "timestamp", label: "Timestamp", visible: true, sortable: true },
     { id: "provider", label: "Provider", visible: true, sortable: true },
     { id: "model", label: "Model", visible: true, sortable: true },
+    { id: "request_message", label: "Request Message", visible: true, sortable: false },
+    { id: "response_message", label: "Response Message", visible: true, sortable: false },
     { id: "business_unit", label: "Business Unit", visible: true, sortable: false },
     { id: "tokens", label: "Total Tokens", visible: true, sortable: true },
     { id: "prompt_tokens", label: "Prompt Tokens", visible: false, sortable: true },
@@ -92,8 +94,15 @@ const Requests = () => {
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
     setDateRange(undefined); // Clear custom date range when preset filter is selected
+    setCurrentPage(1);
   };
 
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+    setSelectedFilter(""); // Clear quick filter highlight when custom range is selected
+    setCurrentPage(1);
+  };
+  
   const handleSort = (column: string) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -145,6 +154,10 @@ const Requests = () => {
             return req.was_blocked ? "Yes" : "No";
           case "request_id":
             return req.id;
+          case "request_message":
+            return (req.request_message ? String(req.request_message) : "").replace(/"/g, '""');
+          case "response_message":
+            return (req.response_message ? String(req.response_message) : "").replace(/"/g, '""');
           default:
             return "N/A";
         }
@@ -185,7 +198,7 @@ const Requests = () => {
             selectedFilter={selectedFilter}
             onFilterChange={handleFilterChange}
             dateRange={dateRange}
-            onDateRangeChange={setDateRange}
+            onDateRangeChange={handleDateRangeChange}
           />
 
           <div className="flex flex-wrap gap-3">
@@ -313,35 +326,40 @@ const Requests = () => {
                                 {request.providers?.display_name}
                               </Badge>
                             )}
-                            {column.id === "model" && request.models?.display_name}
-                            {column.id === "business_unit" && (request.business_units?.name || "N/A")}
-                            {column.id === "tokens" && request.total_tokens.toLocaleString()}
-                            {column.id === "prompt_tokens" && request.prompt_tokens.toLocaleString()}
-                            {column.id === "completion_tokens" && request.completion_tokens.toLocaleString()}
-                            {column.id === "cost" && (
-                              <span className="font-semibold">${Number(request.cost).toFixed(4)}</span>
-                            )}
-                            {column.id === "status" && (
-                              <Badge
-                                variant={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "default" : "destructive"}
-                                className={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "bg-success hover-scale" : "hover-scale"}
-                              >
-                                {request.status_code || "N/A"}
-                              </Badge>
-                            )}
-                            {column.id === "response_time" && (
-                              request.response_time_ms ? `${request.response_time_ms}ms` : "N/A"
-                            )}
-                            {column.id === "was_blocked" && (
-                              <Badge variant={request.was_blocked ? "destructive" : "secondary"}>
-                                {request.was_blocked ? "Blocked" : "Allowed"}
-                              </Badge>
-                            )}
-                            {column.id === "request_id" && (
-                              <span className="truncate block max-w-[100px]" title={request.id}>
-                                {request.id.substring(0, 8)}...
-                              </span>
-                            )}
+            {column.id === "model" && request.models?.display_name}
+            {column.id === "business_unit" && (request.business_units?.name || "N/A")}
+            {column.id === "tokens" && request.total_tokens.toLocaleString()}
+            {column.id === "prompt_tokens" && request.prompt_tokens.toLocaleString()}
+            {column.id === "completion_tokens" && request.completion_tokens.toLocaleString()}
+            {column.id === "cost" && (
+              <span className="font-semibold">${Number(request.cost).toFixed(4)}</span>
+            )}
+            {column.id === "status" && (
+              <Badge
+                variant={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "default" : "destructive"}
+                className={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "bg-success hover-scale" : "hover-scale"}
+              >
+                {request.status_code || "N/A"}
+              </Badge>
+            )}
+            {column.id === "response_time" && (
+              request.response_time_ms ? `${request.response_time_ms}ms` : "N/A"
+            )}
+            {column.id === "request_message" && (
+              <span className="truncate block max-w-[420px]" title={(request as any).request_message || ""}>
+                {(request as any).request_message || "—"}
+              </span>
+            )}
+            {column.id === "response_message" && (
+              <span className="truncate block max-w-[420px]" title={(request as any).response_message || ""}>
+                {(request as any).response_message || "—"}
+              </span>
+            )}
+            {column.id === "request_id" && (
+              <span className="truncate block max-w-[100px]" title={request.id}>
+                {request.id.substring(0, 8)}...
+              </span>
+            )}
                           </TableCell>
                         ))}
                       </TableRow>

@@ -66,7 +66,9 @@ export const useApiRequests = (filters: RequestFilters) => {
         filteredData = filteredData.filter(r =>
           r.id.toLowerCase().includes(query) ||
           r.models?.display_name.toLowerCase().includes(query) ||
-          r.providers?.display_name.toLowerCase().includes(query)
+          r.providers?.display_name.toLowerCase().includes(query) ||
+          ((r as any).request_message ? (r as any).request_message.toLowerCase().includes(query) : false) ||
+          ((r as any).response_message ? (r as any).response_message.toLowerCase().includes(query) : false)
         );
       }
 
