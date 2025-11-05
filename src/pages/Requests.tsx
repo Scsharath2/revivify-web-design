@@ -4,14 +4,13 @@ import { FilterBar } from "@/components/FilterBar";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingTable } from "@/components/LoadingCard";
 import { ColumnCustomizer, ColumnConfig } from "@/components/ColumnCustomizer";
+import { RequestDetailDrawer } from "@/components/RequestDetailDrawer";
+import { RequestsFilters } from "@/components/RequestsFilters";
+import { RequestsTable } from "@/components/RequestsTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MultiSelect } from "@/components/ui/multi-select";
-import { Input } from "@/components/ui/input";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { Search, Download, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { useApiRequests } from "@/hooks/useApiRequests";
 import { useProviders } from "@/hooks/useProviders";
@@ -30,6 +29,8 @@ const Requests = () => {
   const [sortBy, setSortBy] = useState<string>("timestamp");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const pageSize = 100;
 
   const [columns, setColumns] = useState<ColumnConfig[]>([
@@ -113,9 +114,9 @@ const Requests = () => {
     setCurrentPage(1);
   };
 
-  const SortIcon = ({ column }: { column: string }) => {
-    if (sortBy !== column) return <ArrowUpDown className="h-4 w-4 ml-1" />;
-    return sortOrder === "asc" ? <ArrowUp className="h-4 w-4 ml-1" /> : <ArrowDown className="h-4 w-4 ml-1" />;
+  const handleRowClick = (request: any) => {
+    setSelectedRequest(request);
+    setIsDetailOpen(true);
   };
 
   const handleExport = () => {
@@ -201,52 +202,31 @@ const Requests = () => {
             onDateRangeChange={handleDateRangeChange}
           />
 
-          <div className="flex flex-wrap gap-3">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search requests..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="pl-9 transition-all duration-300 focus:shadow-md"
-                />
-              </div>
-            </div>
-            <MultiSelect
-              options={providers?.map((p) => ({ label: p.display_name, value: p.display_name })) || []}
-              selected={selectedProviders}
-              onChange={(values) => {
-                setSelectedProviders(values);
-                setCurrentPage(1);
-              }}
-              placeholder="Providers"
-              className="w-[200px]"
-            />
-            <MultiSelect
-              options={models?.map((m) => ({ label: m.display_name, value: m.display_name })) || []}
-              selected={selectedModels}
-              onChange={(values) => {
-                setSelectedModels(values);
-                setCurrentPage(1);
-              }}
-              placeholder="Models"
-              className="w-[200px]"
-            />
-            <MultiSelect
-              options={businessUnits?.map((bu) => ({ label: bu.name, value: bu.name })) || []}
-              selected={selectedBusinessUnits}
-              onChange={(values) => {
-                setSelectedBusinessUnits(values);
-                setCurrentPage(1);
-              }}
-              placeholder="Business Units"
-              className="w-[200px]"
-            />
-          </div>
+          <RequestsFilters
+            searchQuery={searchQuery}
+            onSearchChange={(value) => {
+              setSearchQuery(value);
+              setCurrentPage(1);
+            }}
+            providers={providers}
+            selectedProviders={selectedProviders}
+            onProvidersChange={(values) => {
+              setSelectedProviders(values);
+              setCurrentPage(1);
+            }}
+            models={models}
+            selectedModels={selectedModels}
+            onModelsChange={(values) => {
+              setSelectedModels(values);
+              setCurrentPage(1);
+            }}
+            businessUnits={businessUnits}
+            selectedBusinessUnits={selectedBusinessUnits}
+            onBusinessUnitsChange={(values) => {
+              setSelectedBusinessUnits(values);
+              setCurrentPage(1);
+            }}
+          />
         </div>
 
         {/* Table */}
@@ -280,93 +260,14 @@ const Requests = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {visibleColumns.map((column) => (
-                        <TableHead key={column.id} className={column.id.includes("tokens") || column.id === "cost" ? "text-right" : ""}>
-                          {column.sortable ? (
-                            <Button
-                              variant="ghost"
-                              onClick={() => handleSort(column.id)}
-                              className="hover:bg-transparent p-0"
-                            >
-                              {column.label}
-                              <SortIcon column={column.id} />
-                            </Button>
-                          ) : (
-                            column.label
-                          )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {requests.map((request, index) => (
-                      <TableRow 
-                        key={request.id} 
-                        className="hover:bg-muted/50 transition-colors duration-200 cursor-pointer animate-fade-in"
-                        style={{ animationDelay: `${Math.min(index * 0.02, 1)}s` }}
-                      >
-                        {visibleColumns.map((column) => (
-                          <TableCell 
-                            key={column.id}
-                            className={
-                              column.id === "timestamp" ? "font-mono text-sm" :
-                              column.id.includes("tokens") || column.id === "cost" ? "text-right font-mono" :
-                              column.id === "model" ? "font-medium" :
-                              column.id === "request_id" ? "font-mono text-xs" :
-                              ""
-                            }
-                          >
-                            {column.id === "timestamp" && format(new Date(request.request_timestamp), "yyyy-MM-dd HH:mm:ss")}
-                            {column.id === "provider" && (
-                              <Badge variant="outline" className="transition-all duration-200 hover:bg-primary/10">
-                                {request.providers?.display_name}
-                              </Badge>
-                            )}
-            {column.id === "model" && request.models?.display_name}
-            {column.id === "business_unit" && (request.business_units?.name || "N/A")}
-            {column.id === "tokens" && request.total_tokens.toLocaleString()}
-            {column.id === "prompt_tokens" && request.prompt_tokens.toLocaleString()}
-            {column.id === "completion_tokens" && request.completion_tokens.toLocaleString()}
-            {column.id === "cost" && (
-              <span className="font-semibold">${Number(request.cost).toFixed(4)}</span>
-            )}
-            {column.id === "status" && (
-              <Badge
-                variant={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "default" : "destructive"}
-                className={request.status_code && request.status_code >= 200 && request.status_code < 300 ? "bg-success hover-scale" : "hover-scale"}
-              >
-                {request.status_code || "N/A"}
-              </Badge>
-            )}
-            {column.id === "response_time" && (
-              request.response_time_ms ? `${request.response_time_ms}ms` : "N/A"
-            )}
-            {column.id === "request_message" && (
-              <span className="truncate block max-w-[420px]" title={request.request_message || ""}>
-                {request.request_message || "—"}
-              </span>
-            )}
-            {column.id === "response_message" && (
-              <span className="truncate block max-w-[420px]" title={request.response_message || ""}>
-                {request.response_message || "—"}
-              </span>
-            )}
-            {column.id === "request_id" && (
-              <span className="truncate block max-w-[100px]" title={request.id}>
-                {request.id.substring(0, 8)}...
-              </span>
-            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <RequestsTable
+                requests={requests}
+                visibleColumns={visibleColumns}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                onRowClick={handleRowClick}
+              />
               
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-4 border-t">
@@ -417,6 +318,12 @@ const Requests = () => {
             </CardContent>
           </Card>
         )}
+
+        <RequestDetailDrawer
+          request={selectedRequest}
+          open={isDetailOpen}
+          onOpenChange={setIsDetailOpen}
+        />
       </div>
     </Layout>
   );
