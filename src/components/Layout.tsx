@@ -24,6 +24,7 @@ interface LayoutProps {
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Requests", href: "/requests", icon: FileText },
+  { name: "Analytics", href: "/analytics", icon: TrendingUp },
   { name: "Admin", href: "/admin", icon: ShieldCheck },
   { name: "Alerts", href: "/alerts", icon: Bell },
   { name: "Settings", href: "/settings", icon: Settings },
