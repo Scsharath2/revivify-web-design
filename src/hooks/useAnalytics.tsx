@@ -51,9 +51,11 @@ export const useAnalytics = (dateRange?: { from?: Date; to?: Date }) => {
         .order("request_timestamp", { ascending: false });
 
       if (error) {
-        console.error("Analytics query error:", error);
+        console.error("[Analytics] query error", error);
         throw error;
       }
+
+      console.log("[Analytics] fetched", { count: requests.length, from: startIso, to: endIso });
 
       // Return empty data structure if no requests found
       if (!requests || requests.length === 0) {
@@ -194,7 +196,7 @@ export const useAnalytics = (dateRange?: { from?: Date; to?: Date }) => {
       const p90 = costs[Math.floor(costs.length * 0.9)] || 0;
       const p99 = costs[Math.floor(costs.length * 0.99)] || 0;
 
-      return {
+      const result: AnalyticsData = {
         dailyCosts,
         monthlyCosts,
         totalCost: requests?.reduce((sum, r) => sum + Number(r.cost), 0) || 0,
@@ -217,6 +219,9 @@ export const useAnalytics = (dateRange?: { from?: Date; to?: Date }) => {
           p99: Math.round(p99 * 10000) / 10000,
         },
       };
+
+      console.log("[Analytics] processed", { totalRequests: result.totalRequests, totalCost: result.totalCost });
+      return result;
     },
     staleTime: 60_000,
     gcTime: 5 * 60_000,

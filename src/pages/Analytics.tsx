@@ -17,11 +17,16 @@ const Analytics = () => {
   const [selectedFilter, setSelectedFilter] = useState("3m");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  const computedRange = dateRange?.from && dateRange?.to
-    ? { from: dateRange.from, to: dateRange.to }
-    : { from: subMonths(new Date(), 3), to: new Date() };
+  const [now] = useState(() => new Date());
 
-  const { data: analytics, isLoading, error } = useAnalytics(computedRange);
+  const computedRange = useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      return { from: dateRange.from, to: dateRange.to };
+    }
+    return { from: subMonths(now, 3), to: now };
+  }, [dateRange, now]);
+
+  const { data: analytics, isLoading, error, isFetching } = useAnalytics(computedRange);
 
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
@@ -135,7 +140,7 @@ const Analytics = () => {
             <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
             <p className="text-muted-foreground mt-1">Advanced cost analysis and predictions</p>
           </div>
-          <Button onClick={handleExportReport} variant="outline" className="hover-scale">
+          <Button onClick={handleExportReport} variant="outline" className="hover-scale" onMouseDown={() => console.log("[Analytics] state", { isLoading, error, hasData: !!analytics })}>
             <Download className="h-4 w-4 mr-2" />
             Export Full Report
           </Button>
@@ -151,7 +156,7 @@ const Analytics = () => {
           />
         </div>
 
-        {isLoading ? (
+        {isLoading && !analytics ? (
           <div className="grid gap-4 md:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <LoadingCard key={i} />
