@@ -2,6 +2,26 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth, subMonths, format, addMonths, eachDayOfInterval, eachMonthOfInterval } from "date-fns";
 
+// Strongly-typed analytics result used by the Analytics page
+type AnalyticsData = {
+  dailyCosts: { date: string; cost: number; requests: number }[];
+  monthlyCosts: { month: string; cost: number; requests: number }[];
+  totalCost: number;
+  totalRequests: number;
+  avgCostPerRequest: number;
+  predictions: {
+    nextMonth: number;
+    next3Months: number;
+    avgMonthlyCost: number;
+    avgMonthlyRequests: number;
+    trend: "increasing" | "decreasing" | "stable";
+  };
+  providerStats: { name: string; cost: number; requests: number; avgCost: number }[];
+  businessUnitStats: { name: string; cost: number; requests: number }[];
+  modelStats: { name: string; cost: number; requests: number; avgCost: number }[];
+  costDistribution: { p50: number; p90: number; p99: number };
+};
+
 export const useAnalytics = (dateRange?: { from?: Date; to?: Date }) => {
   const startDate = dateRange?.from || subMonths(new Date(), 3);
   const endDate = dateRange?.to || new Date();
@@ -9,7 +29,7 @@ export const useAnalytics = (dateRange?: { from?: Date; to?: Date }) => {
   const startIso = startDate.toISOString();
   const endIso = endDate.toISOString();
 
-  return useQuery({
+  return useQuery<AnalyticsData, Error>({
     queryKey: ["analytics", startIso, endIso],
     queryFn: async () => {
       // Fetch API requests within date range with left joins for better data handling
@@ -198,5 +218,9 @@ export const useAnalytics = (dateRange?: { from?: Date; to?: Date }) => {
         },
       };
     },
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 };

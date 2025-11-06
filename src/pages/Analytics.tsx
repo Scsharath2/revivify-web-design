@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { FilterBar } from "@/components/FilterBar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
