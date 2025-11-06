@@ -12,19 +12,54 @@ export const useAnalytics = (dateRange?: { from?: Date; to?: Date }) => {
   return useQuery({
     queryKey: ["analytics", startIso, endIso],
     queryFn: async () => {
-      // Fetch API requests within date range
+      // Fetch API requests within date range with left joins for better data handling
       const { data: requests, error } = await supabase
         .from("api_requests")
         .select(`
-          *,
-          models!inner(display_name, provider_id),
-          providers!inner(display_name),
+          id,
+          request_timestamp,
+          cost,
+          prompt_tokens,
+          completion_tokens,
+          total_tokens,
+          models(display_name, provider_id),
+          providers(display_name),
           business_units(name)
         `)
         .gte("request_timestamp", startDate.toISOString())
-        .lte("request_timestamp", endDate.toISOString());
+        .lte("request_timestamp", endDate.toISOString())
+        .order("request_timestamp", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Analytics query error:", error);
+        throw error;
+      }
+
+      // Return empty data structure if no requests found
+      if (!requests || requests.length === 0) {
+        return {
+          dailyCosts: [],
+          monthlyCosts: [],
+          totalCost: 0,
+          totalRequests: 0,
+          avgCostPerRequest: 0,
+          predictions: {
+            nextMonth: 0,
+            next3Months: 0,
+            avgMonthlyCost: 0,
+            avgMonthlyRequests: 0,
+            trend: "stable" as const,
+          },
+          providerStats: [],
+          businessUnitStats: [],
+          modelStats: [],
+          costDistribution: {
+            p50: 0,
+            p90: 0,
+            p99: 0,
+          },
+        };
+      }
 
       // Daily cost trend
       const days = eachDayOfInterval({ start: startDate, end: endDate });

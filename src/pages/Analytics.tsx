@@ -4,13 +4,14 @@ import { FilterBar } from "@/components/FilterBar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, TrendingUp, TrendingDown, DollarSign, Activity, Target } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Download, TrendingUp, TrendingDown, DollarSign, Activity, Target, AlertCircle } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { format, subMonths } from "date-fns";
 import { toast } from "sonner";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { LoadingTable } from "@/components/LoadingCard";
+import { LoadingCard } from "@/components/LoadingCard";
 
 const Analytics = () => {
   const [selectedFilter, setSelectedFilter] = useState("3m");
@@ -20,7 +21,7 @@ const Analytics = () => {
     ? { from: dateRange.from, to: dateRange.to }
     : { from: subMonths(new Date(), 3), to: new Date() };
 
-  const { data: analytics, isLoading } = useAnalytics(computedRange);
+  const { data: analytics, isLoading, error } = useAnalytics(computedRange);
 
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
@@ -151,11 +152,27 @@ const Analytics = () => {
         </div>
 
         {isLoading ? (
-          <LoadingTable />
-        ) : !analytics ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <LoadingCard key={i} />
+            ))}
+          </div>
+        ) : error ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error loading analytics</AlertTitle>
+            <AlertDescription>
+              {error instanceof Error ? error.message : "Failed to load analytics data. Please try again."}
+            </AlertDescription>
+          </Alert>
+        ) : !analytics || analytics.totalRequests === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              No analytics data available
+            <CardContent className="py-12 text-center">
+              <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No analytics data available</h3>
+              <p className="text-muted-foreground">
+                Analytics will appear here once you have API requests in the selected date range.
+              </p>
             </CardContent>
           </Card>
         ) : (
