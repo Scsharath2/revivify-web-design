@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Download, TrendingUp, TrendingDown, DollarSign, Activity, Target, AlertCircle } from "lucide-react";
+import { Download, TrendingUp, TrendingDown, DollarSign, Activity, Target, AlertCircle, RefreshCw } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { format, subMonths } from "date-fns";
+import { format, subMonths, subDays } from "date-fns";
 import { toast } from "sonner";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { LoadingCard } from "@/components/LoadingCard";
@@ -17,14 +17,24 @@ const Analytics = () => {
   const [selectedFilter, setSelectedFilter] = useState("3m");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  const [now] = useState(() => new Date());
-
   const computedRange = useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
       return { from: dateRange.from, to: dateRange.to };
     }
-    return { from: subMonths(now, 3), to: now };
-  }, [dateRange, now]);
+    const now = new Date();
+    switch (selectedFilter) {
+      case "24h":
+        return { from: subDays(now, 1), to: now };
+      case "7d":
+        return { from: subDays(now, 7), to: now };
+      case "1m":
+        return { from: subMonths(now, 1), to: now };
+      case "3m":
+        return { from: subMonths(now, 3), to: now };
+      default:
+        return { from: subMonths(now, 3), to: now };
+    }
+  }, [selectedFilter, dateRange]);
 
   const { data: analytics, isLoading, error, isFetching } = useAnalytics(computedRange);
 
@@ -136,11 +146,16 @@ const Analytics = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between animate-fade-in">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
-            <p className="text-muted-foreground mt-1">Advanced cost analysis and predictions</p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
+              <p className="text-muted-foreground mt-1">Advanced cost analysis and predictions</p>
+            </div>
+            {isFetching && (
+              <RefreshCw className="h-5 w-5 text-primary animate-spin" />
+            )}
           </div>
-          <Button onClick={handleExportReport} variant="outline" className="hover-scale" onMouseDown={() => console.log("[Analytics] state", { isLoading, error, hasData: !!analytics })}>
+          <Button onClick={handleExportReport} variant="outline" className="hover-scale">
             <Download className="h-4 w-4 mr-2" />
             Export Full Report
           </Button>
@@ -272,37 +287,6 @@ const Analytics = () => {
                 </CardContent>
               </Card>
 
-              {/* Monthly Aggregation */}
-              <Card className="animate-fade-in animate-stagger-3">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Monthly Cost Summary</CardTitle>
-                    <CardDescription>Monthly aggregated costs</CardDescription>
-                  </div>
-                  <Button onClick={() => handleExportCSV("monthly")} variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={analytics.monthlyCosts}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                      <YAxis stroke="hsl(var(--muted-foreground))" />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: "hsl(var(--card))", 
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "var(--radius)",
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="cost" fill="hsl(var(--primary))" name="Cost ($)" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             {/* Predictions Tab */}
@@ -389,33 +373,23 @@ const Analytics = () => {
             {/* Breakdown Tab */}
             <TabsContent value="breakdown" className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
-                {/* Provider Breakdown */}
+                {/* Top Models by Cost */}
                 <Card className="animate-fade-in">
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                      <CardTitle>Provider Breakdown</CardTitle>
-                      <CardDescription>Cost by provider</CardDescription>
+                      <CardTitle>Top Models by Cost</CardTitle>
+                      <CardDescription>Highest cost models</CardDescription>
                     </div>
-                    <Button onClick={() => handleExportCSV("providers")} variant="outline" size="sm">
+                    <Button onClick={() => handleExportCSV("models")} variant="outline" size="sm">
                       <Download className="h-4 w-4" />
                     </Button>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie
-                          data={analytics.providerStats}
-                          dataKey="cost"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          label
-                        >
-                          {analytics.providerStats.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
+                      <BarChart data={analytics.modelStats.slice(0, 5)} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
+                        <YAxis dataKey="name" type="category" width={120} stroke="hsl(var(--muted-foreground))" />
                         <Tooltip 
                           contentStyle={{ 
                             backgroundColor: "hsl(var(--card))", 
@@ -423,16 +397,17 @@ const Analytics = () => {
                             borderRadius: "var(--radius)",
                           }}
                         />
-                      </PieChart>
+                        <Bar dataKey="cost" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                      </BarChart>
                     </ResponsiveContainer>
                     <div className="mt-4 space-y-2">
-                      {analytics.providerStats.slice(0, 5).map((provider, idx) => (
-                        <div key={provider.name} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                            <span>{provider.name}</span>
+                      {analytics.modelStats.slice(0, 5).map((model) => (
+                        <div key={model.name} className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground truncate">{model.name}</span>
+                          <div className="flex gap-3">
+                            <span className="font-semibold">${model.cost.toFixed(2)}</span>
+                            <span className="text-muted-foreground">{model.requests} req</span>
                           </div>
-                          <span className="font-semibold">${provider.cost}</span>
                         </div>
                       ))}
                     </div>
